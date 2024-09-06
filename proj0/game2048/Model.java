@@ -5,7 +5,7 @@ import java.util.Observable;
 
 
 /** The state of a game of 2048.
- *  @author TODO: YOUR NAME HERE
+ *  @author TODO: laiqi
  */
 public class Model extends Observable {
     /** Current contents of the board. */
@@ -111,12 +111,60 @@ public class Model extends Observable {
         changed = false;
 
         // TODO: Modify this.board (and perhaps this.score) to account
+        // 设置视角，使得所选的side方向成为“北方”
+        board.setViewingPerspective();
+        int size = size();  // 获取棋盘大小
+
+        // 遍历每一列
+        for (int col = 0; col < size; col++) {
+            int lastMergedRow = -1;  // 跟踪上次合并的位置，防止重复合并
+            for (int row = size - 2; row >= 0; row--) {  // 从倒数第二行开始向上移动
+                Tile tile = tile(col, row);
+                if (tile == null) {
+                    continue;  // 跳过空位置
+                }
+
+                // 尝试将当前tile向上移动
+                int targetRow = row;
+                while (targetRow + 1 < size && tile(col, targetRow + 1) == null) {
+                    targetRow++;
+                }
+
+                // 检查是否可以合并
+                if (targetRow + 1 < size && tile(col, targetRow + 1) != null &&
+                        tile(col, targetRow + 1).value() == tile.value() &&
+                        targetRow + 1 != lastMergedRow) {
+
+                    // 合并方块，更新分数
+                    Tile mergedTile = tile(col, targetRow + 1);
+                    value[col][targetRow + 1]  = tile.merge(col, targetRow + 1, mergedTile);
+                    score += value[col][targetRow + 1].value();  // 更新分数
+                    lastMergedRow = targetRow + 1;  // 记录合并位置
+                    value[col][row] = null;  // 清空原来的位置
+                    changed = true;  // 棋盘发生了变化
+                } else if (targetRow != row) {
+                    // 没有合并但位置发生了变化
+                    value[col][targetRow] = tile.move(col, targetRow);
+                    value[col][row] = null;
+                    changed = true;  // 棋盘发生了变化
+                }
+            }
+        }
+
+        // 检查游戏是否结束
+        checkGameOver();
+
+        // 如果棋盘发生了变化，通知观察者
+        if (changed) {
+            setChanged();
+        }
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
 
         checkGameOver();
         if (changed) {
             setChanged();
+
         }
         return changed;
     }
@@ -138,6 +186,15 @@ public class Model extends Observable {
      * */
     public static boolean emptySpaceExists(Board b) {
         // TODO: Fill in this function.
+        int size = b.size();
+        for (int col = 0; col < size; col++) {
+            for (int row = 0; row < size; row++) {
+                if (b.tile(col, row) == null) {
+                    return true;
+                }
+            }
+        }
+
         return false;
     }
 
@@ -148,6 +205,15 @@ public class Model extends Observable {
      */
     public static boolean maxTileExists(Board b) {
         // TODO: Fill in this function.
+        int size = b.size();
+        for (int col = 0; col < size; col++) {
+            for (int row = 0; row < size; row++) {
+                Tile t = b.tile(col,row);
+                if(t != null && t.value() == MAX_PIECE){
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -159,6 +225,30 @@ public class Model extends Observable {
      */
     public static boolean atLeastOneMoveExists(Board b) {
         // TODO: Fill in this function.
+        if(emptySpaceExists(b)){
+            return true;
+        }
+        int size = b.size();
+        for(int col = 0;col < size;col++){
+            for(int row = 0; row < size; row++){
+                Tile current = b.tile(col,row);//get tile now
+                if(current == null)  continue;
+                //check TileRight
+                if(col < size-1){
+                    Tile right = b.tile(col+1,row);
+                    if(right != null && right.value() == current.value()){
+                        return true;
+                    }
+                }
+                //check TileBelow
+                if(row < size-1){
+                    Tile below = b.tile(col,row+1);
+                    if(below != null && below.value() == current.value()){
+                        return true;
+                    }
+                }
+            }
+        }
         return false;
     }
 
